@@ -2,6 +2,8 @@ const express = require("express");
 const mongoose = require("mongoose");
 const { Transaction } = require("../models/Transaction");
 const { Entity } = require("../models/Entity");
+const { RecurringCycle } = require("../models/RecurringCycle");
+const { Allocation } = require("../models/Allocation");
 const { badRequest, notFound } = require("../utils/http");
 
 const router = express.Router();
@@ -12,7 +14,7 @@ function isValidObjectId(id) {
 
 router.post("/", async (req, res) => {
   try {
-    const { amount, from, to, title, note, date, sourceTransactionId, sourceEntityId } = req.body ?? {};
+    const { amount, from, to, title, note, date, sourceTransactionId, sourceEntityId, cycleId, type } = req.body ?? {};
 
     // 1. Validate Amount
     const amt = Number(amount);
@@ -68,7 +70,7 @@ router.post("/", async (req, res) => {
     }
 
     // 6. Create Transaction
-    const tx = await Transaction.create({
+    const txData = {
       amount: amt,
       from,
       to,
@@ -77,7 +79,48 @@ router.post("/", async (req, res) => {
       date: safeDate,
       sourceTransactionId: sTxId,
       sourceEntityId: sEntId,
-    });
+      type: type === "income" || type === "expense" ? type : undefined,
+      cycleId: cycleId && isValidObjectId(cycleId) ? cycleId : undefined,
+    };
+
+    if (txData.type === "income") {
+      txData.remainingAmount = amt;
+    }
+
+    const tx = await Transaction.create(txData);
+
+    // 7. Cycle & Allocation Logic
+    if (tx.cycleId) {
+      if (tx.type === "income") {
+        await RecurringCycle.findByIdAndUpdate(tx.cycleId, {
+          $inc: { receivedAmount: tx.amount }
+        });
+      } else if (tx.type === "expense") {
+        // FIFO Allocation Logic
+        let amountToAllocate = tx.amount;
+        const availableIncomes = await Transaction.find({
+          cycleId: tx.cycleId,
+          type: "income",
+          remainingAmount: { $gt: 0 }
+        }).sort({ date: 1, createdAt: 1 }); // oldest first
+
+        for (const incTx of availableIncomes) {
+          if (amountToAllocate <= 0) break;
+
+          const toAllocate = Math.min(amountToAllocate, incTx.remainingAmount);
+          amountToAllocate -= toAllocate;
+          
+          incTx.remainingAmount -= toAllocate;
+          await incTx.save();
+
+          await Allocation.create({
+            expenseTxId: tx._id,
+            incomeTxId: incTx._id,
+            amountAllocated: toAllocate
+          });
+        }
+      }
+    }
 
     return res.status(201).json(tx);
   } catch (err) {

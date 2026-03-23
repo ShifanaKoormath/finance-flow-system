@@ -12,7 +12,7 @@ const router = express.Router();
 
 router.post("/", async (req, res) => {
   try {
-    const { name, type, mode, expectedAmount, frequency, totalAmount, groupId } = req.body ?? {};
+    const { name, type, mode, expectedAmount, frequency, totalAmount, groupId, recurringConfig, projectConfig } = req.body ?? {};
 
     if (!name || typeof name !== "string") {
       return badRequest(res, "name is required");
@@ -35,9 +35,15 @@ router.post("/", async (req, res) => {
       }
 
       if (mode) doc.mode = mode;
+      
+      // Legacy flat fields support
       if (expectedAmount != null) doc.expectedAmount = Number(expectedAmount);
       if (frequency) doc.frequency = frequency;
       if (totalAmount != null) doc.totalAmount = Number(totalAmount);
+
+      // New structures
+      if (recurringConfig) doc.recurringConfig = recurringConfig;
+      if (projectConfig) doc.projectConfig = projectConfig;
     }
 
     if (groupId) {

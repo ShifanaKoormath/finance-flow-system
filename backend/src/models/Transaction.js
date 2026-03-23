@@ -22,6 +22,15 @@ const TransactionSchema = new mongoose.Schema(
     // Linking fields for tracing usage of a specific received transaction or a general source.
     sourceTransactionId: { type: mongoose.Schema.Types.ObjectId, ref: "Transaction", index: true },
     sourceEntityId: { type: mongoose.Schema.Types.ObjectId, ref: "Entity", index: true },
+
+    // New Fields for FlowLedger Extensions
+    type: { type: String, enum: ["income", "expense"], index: true },
+    
+    // For Recurring Sources linking specifically to a month's cycle
+    cycleId: { type: mongoose.Schema.Types.ObjectId, ref: "RecurringCycle", default: null, index: true },
+    
+    // For Income Transactions to track FIFO allocation
+    remainingAmount: { type: Number, min: 0 },
   },
   { timestamps: true }
 );

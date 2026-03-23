@@ -11,6 +11,13 @@ function sum(list) {
   return list.reduce((s, x) => s + (Number(x.amount) || 0), 0);
 }
 
+function formatMonthStr(p) {
+  if (!p) return "";
+  const [y, m] = p.split("-");
+  const d = new Date(y, m - 1);
+  return d.toLocaleDateString("en-US", { month: "long", year: "numeric" });
+}
+
 export function EntityPage() {
   const { entityId } = useParams();
   const nav = useNavigate();
@@ -19,6 +26,7 @@ export function EntityPage() {
   const [transactions, setTransactions] = useState([]);
   const [usageBySourceTx, setUsageBySourceTx] = useState({}); // txId -> usage[]
   const [sourceSummary, setSourceSummary] = useState(null);
+  const [cycles, setCycles] = useState([]);
   const [busyQuick, setBusyQuick] = useState(false);
   const [error, setError] = useState("");
 
@@ -93,6 +101,11 @@ export function EntityPage() {
         const s = await api.sourceSummary(entityId);
         if (!alive) return;
         setSourceSummary(s);
+
+        if (entity.mode === "recurring") {
+          const c = await api.listCycles(entityId);
+          if (alive) setCycles(c);
+        }
       } catch (e) {
         if (!alive) return;
         setError(e?.message || "Failed to load source summary");
@@ -103,6 +116,23 @@ export function EntityPage() {
       alive = false;
     };
   }, [entity, entityId]);
+
+  const projectStats = useMemo(() => {
+    if (entity?.type === "source" && entity.mode === "project" && sourceSummary) {
+      const totalAmount = entity.projectConfig?.totalAmount || entity.totalAmount || 0;
+      const totalReceived = sourceSummary.totalReceived || 0;
+      let status = "not started";
+      const now = new Date();
+      const deadline = entity.projectConfig?.deadline || entity.deadline;
+
+      if (totalReceived > 0) status = "in progress";
+      if (totalAmount > 0 && totalReceived >= totalAmount) status = "completed";
+      else if (status !== "completed" && deadline && new Date(deadline) < now) status = "overdue";
+
+      return { totalAmount, totalReceived, status };
+    }
+    return null;
+  }, [entity, sourceSummary]);
 
   const [expandedUsage, setExpandedUsage] = useState({}); // txId + entityId -> bool
 
@@ -135,29 +165,17 @@ export function EntityPage() {
       .sort(byDateDesc);
   }, [entity, transactions, entityId]);
 
-  const recurringMonths = useMemo(() => {
-    if (!entity || entity.type !== "source" || entity.mode !== "recurring") return [];
-    const map = new Map(); // month -> sum received
-    for (const t of sourceReceipts) {
-      const m = isoMonth(t.date);
-      map.set(m, (map.get(m) || 0) + t.amount);
+  async function handleCreateCycle() {
+    const period = prompt("Enter month period (YYYY-MM):", new Date().toISOString().slice(0, 7));
+    if (!period || !/^\d{4}-\d{2}$/.test(period)) return;
+    try {
+      const expectedAmount = entity.recurringConfig?.expectedAmount || entity.expectedAmount || 0;
+      const newCycle = await api.createCycle({ sourceId: entityId, period, expectedAmount });
+      setCycles(prev => [newCycle, ...prev].sort((a,b) => b.period.localeCompare(a.period)));
+    } catch (e) {
+      alert(e.message || "Failed to create month cycle");
     }
-    const months = Array.from(map.keys()).sort().reverse();
-    return months.map((m) => {
-      const receivedAmt = map.get(m) || 0;
-      const expected = Number(entity.expectedAmount) || 0;
-      const status = expected
-        ? receivedAmt >= expected
-          ? "received"
-          : receivedAmt > 0
-            ? "partial"
-            : "not received"
-        : receivedAmt > 0
-          ? "received"
-          : "not received";
-      return { month: m, receivedAmt, expected, status };
-    });
-  }, [entity, sourceReceipts]);
+  }
 
   const currentGroup = useMemo(() => entity?.groupId ? groups.find(g => g._id === entity.groupId) : null, [entity, groups]);
 
@@ -334,27 +352,66 @@ export function EntityPage() {
 
       {entity.type === "source" && entity.mode === "recurring" ? (
         <div className="card cardPad">
-          <div className="sectionTitle">
-            <h2>Monthly view (visual)</h2>
-            <span className="muted">derived from transactions</span>
+          <div className="row" style={{ justifyContent: "space-between", alignItems: "flex-start", marginBottom: 16 }}>
+            <div>
+              <div style={{ fontWeight: 900, fontSize: 18 }}>Months</div>
+              <div className="muted" style={{ fontSize: 12 }}>monthly tracking</div>
+            </div>
+            <button className="btn btnGhost" style={{ padding: "4px 8px", fontSize: 12, color: "var(--primary)" }} onClick={handleCreateCycle}>
+              + New Month
+            </button>
           </div>
-          {recurringMonths.length ? (
+          {cycles.length ? (
             <div className="list">
-              {recurringMonths.map((m) => (
-                <div key={m.month} className="listItem">
+              {cycles.map((c) => (
+                <div key={c._id} className="listItem" style={{ alignItems: "flex-start" }}>
                   <div>
-                    <div className="listItemTitle">{m.month}</div>
+                    <div className="listItemTitle">{formatMonthStr(c.period)}</div>
                     <div className="muted" style={{ fontSize: 12 }}>
-                      {m.status}{m.expected ? ` (expected ${formatINR(m.expected)})` : ""}
+                      Status: <span style={{ textTransform: "capitalize", fontWeight: c.status === "overdue" ? "bold" : "normal", color: c.status === "overdue" ? "var(--danger)" : "inherit" }}>{c.status}</span>
                     </div>
                   </div>
-                  <div style={{ fontWeight: 900 }}>{formatINR(m.receivedAmt)}</div>
+                  <div style={{ textAlign: "right" }}>
+                    <div style={{ fontWeight: 900, color: "var(--primary)", fontSize: 16 }}>
+                      Received: {formatINR(c.receivedAmount)}
+                    </div>
+                    <div className="muted" style={{ fontSize: 12, marginTop: 4 }}>
+                      Expected: {formatINR(c.expectedAmount || 0)} • Remaining: {formatINR(c.remaining || 0)}
+                    </div>
+                  </div>
                 </div>
               ))}
             </div>
           ) : (
-            <div className="muted" style={{ padding: 10 }}>No receipts yet.</div>
+            <div className="muted" style={{ padding: 10 }}>No months yet.</div>
           )}
+        </div>
+      ) : null}
+
+      {projectStats ? (
+        <div className="card cardPad">
+          <div className="sectionTitle">
+            <h2>Project Goal Progress</h2>
+            <span className="muted">Status: <span style={{ textTransform: "capitalize", fontWeight: projectStats.status === "overdue" ? "bold" : "normal", color: projectStats.status === "overdue" ? "var(--danger)" : "inherit" }}>{projectStats.status}</span></span>
+          </div>
+          <div className="row" style={{ justifyContent: "space-between" }}>
+            <div>
+              <div className="muted" style={{ fontSize: 12 }}>Received</div>
+              <div style={{ fontWeight: 900, color: "var(--primary)" }}>{formatINR(projectStats.totalReceived)}</div>
+            </div>
+            <div style={{ textAlign: "right" }}>
+              <div className="muted" style={{ fontSize: 12 }}>Goal Total</div>
+              <div style={{ fontWeight: 900 }}>{formatINR(projectStats.totalAmount)}</div>
+            </div>
+          </div>
+          
+          <div style={{ background: "rgba(0,0,0,0.1)", height: 8, borderRadius: 4, marginTop: 12, overflow: "hidden" }}>
+             <div style={{ 
+               background: "var(--primary)", 
+               height: "100%", 
+               width: `${Math.min(100, (projectStats.totalReceived / (projectStats.totalAmount || 1)) * 100)}%` 
+             }} />
+          </div>
         </div>
       ) : null}
 

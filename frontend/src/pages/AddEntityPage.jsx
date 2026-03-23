@@ -64,9 +64,13 @@ export function AddEntityPage() {
       if (type === "source") {
         payload.mode = mode;
         if (mode === "recurring") {
-          payload.frequency = frequency;
+          payload.recurringConfig = { frequency };
           const amt = Number(expectedAmount);
-          if (amt > 0) payload.expectedAmount = amt;
+          if (amt > 0) payload.recurringConfig.expectedAmount = amt;
+        } else if (mode === "project") {
+          payload.projectConfig = {};
+          const amt = Number(expectedAmount);
+          if (amt > 0) payload.projectConfig.totalAmount = amt;
         }
       }
 
@@ -175,6 +179,14 @@ export function AddEntityPage() {
                   <select className="input" value={frequency} onChange={e => setFrequency(e.target.value)} style={{ padding: 10 }}>
                     <option value="monthly">Monthly</option>
                   </select>
+                </div>
+              </div>
+            )}
+            {mode === "project" && (
+              <div style={{ marginTop: 12, display: "flex", gap: 8 }}>
+                <div style={{ flex: 1 }}>
+                  <div className="muted" style={{ fontSize: 12, marginBottom: 4 }}>Total Amount (Goal)</div>
+                  <input className="input" type="number" placeholder="0" value={expectedAmount} onChange={e => setExpectedAmount(e.target.value)} />
                 </div>
               </div>
             )}

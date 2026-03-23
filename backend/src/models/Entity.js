@@ -15,11 +15,23 @@ const EntitySchema = new mongoose.Schema(
     },
     parentId: { type: mongoose.Schema.Types.ObjectId, ref: "Entity", default: null, index: true },
 
-    // Only meaningful when type === "source"
+    // Legacy fields (kept for backward compatibility, optional)
     mode: { type: String, enum: SOURCE_MODES },
     expectedAmount: { type: Number },
     frequency: { type: String, enum: SOURCE_FREQUENCIES },
     totalAmount: { type: Number },
+
+    // New Structured Configs
+    recurringConfig: {
+      expectedAmount: { type: Number },
+      frequency: { type: String, enum: SOURCE_FREQUENCIES, default: "monthly" },
+      startDate: { type: Date },
+    },
+    projectConfig: {
+      totalAmount: { type: Number },
+      startDate: { type: Date },
+      deadline: { type: Date },
+    },
   },
   { timestamps: true }
 );

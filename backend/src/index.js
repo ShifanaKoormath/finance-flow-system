@@ -9,6 +9,7 @@ const balancesRouter = require("./routes/balances");
 const transactionsRouter = require("./routes/transactions");
 const sourcesRouter = require("./routes/sources");
 const groupsRouter = require("./routes/groups");
+const cyclesRouter = require("./routes/cycles");
 
 const PORT = process.env.PORT ? Number(process.env.PORT) : 5000;
 const MONGODB_URI = process.env.MONGODB_URI;
@@ -30,6 +31,7 @@ async function main() {
   app.use("/api/groups", groupsRouter);
   app.use("/api/balances", balancesRouter);
   app.use("/api/source", sourcesRouter);
+  app.use("/api/cycles", cyclesRouter);
 
   // NOTE: spec endpoints shown as /api/transaction/:id/usage and /api/source/:id/summary
   // We mounted /api/transactions for list/create and embedded :id/usage there.

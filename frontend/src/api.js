@@ -62,5 +62,14 @@ export const api = {
   deleteGroup(id) {
     return request(`/api/groups/${id}`, { method: "DELETE" });
   },
+  listCycles(sourceId) {
+    return request(`/api/cycles/${sourceId}`);
+  },
+  createCycle(payload) {
+    return request("/api/cycles", { method: "POST", body: payload });
+  },
+  cycleTransactions(cycleId) {
+    return request(`/api/cycles/${cycleId}/transactions`);
+  },
 };
 

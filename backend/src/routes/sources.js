@@ -46,7 +46,7 @@ router.get("/:id/summary", async (req, res) => {
       .map(([entityName, totalAmount]) => ({ entityName, totalAmount }))
       .sort((a, b) => b.totalAmount - a.totalAmount);
 
-    return res.json({ totalReceived, totalUsed, remaining, breakdown });
+    return res.json({ totalReceived, totalUsed, remaining, breakdown: breakdown || [] });
   } catch (err) {
     // eslint-disable-next-line no-console
     console.error("GET /api/source/:id/summary error:", err);

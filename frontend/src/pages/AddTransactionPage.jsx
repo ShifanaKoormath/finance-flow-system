@@ -9,6 +9,13 @@ function buildTitle({ kind, amount, otherName }) {
   return `Received ${formatINR(amount)} from ${otherName}`;
 }
 
+function formatMonthStr(p) {
+  if (!p) return "";
+  const [y, m] = p.split("-");
+  const d = new Date(y, m - 1);
+  return d.toLocaleDateString("en-US", { month: "long", year: "numeric" });
+}
+
 function bumpUsage(entityId) {
   try {
     const raw = localStorage.getItem("ft_entity_usage") || "{}";
@@ -38,6 +45,9 @@ export function AddTransactionPage() {
   const [busy, setBusy] = useState(false);
   const [error, setError] = useState("");
   const [searchQuery, setSearchQuery] = useState("");
+
+  const [cycles, setCycles] = useState([]);
+  const [selectedCycleId, setSelectedCycleId] = useState("");
 
   useEffect(() => {
     let alive = true;
@@ -106,6 +116,30 @@ export function AddTransactionPage() {
 
   const sourceEntities = useMemo(() => entities.filter((e) => e.type === "source"), [entities]);
 
+  const activeSourceIdForCycle = useMemo(() => {
+    if (kind === "received" && selectedEntity?.type === "source" && selectedEntity?.mode === "recurring") {
+      return selectedEntityId;
+    }
+    if (linking.mode === "sourceEntity") {
+      const s = sourceEntities.find(s => String(s._id) === linking.id);
+      if (s && s.mode === "recurring") return linking.id;
+    }
+    return null;
+  }, [kind, selectedEntity, selectedEntityId, linking, sourceEntities]);
+
+  useEffect(() => {
+    let alive = true;
+    if (activeSourceIdForCycle) {
+      api.listCycles(activeSourceIdForCycle).then(res => {
+         if(alive) setCycles(res);
+      }).catch(()=>{});
+    } else {
+      setCycles([]);
+      setSelectedCycleId("");
+    }
+    return () => { alive = false; }
+  }, [activeSourceIdForCycle]);
+
   async function create() {
     setBusy(true);
     setError("");
@@ -115,6 +149,10 @@ export function AddTransactionPage() {
       if (!selectedEntityId) throw new Error("Choose an entity");
       const amt = Number(amount);
       if (!Number.isFinite(amt) || amt <= 0) throw new Error("Enter a valid amount");
+
+      if (activeSourceIdForCycle && !selectedCycleId) {
+        throw new Error("Please select a cycle for this recurring source.");
+      }
 
       const from = kind === "gave" ? you._id : selectedEntityId;
       const to = kind === "gave" ? selectedEntityId : you._id;
@@ -127,7 +165,10 @@ export function AddTransactionPage() {
         date: date || undefined,
         title: finalTitle || undefined,
         note: safeTrim(note) || undefined,
+        type: kind === "received" ? "income" : "expense"
       };
+
+      if (selectedCycleId) payload.cycleId = selectedCycleId;
 
       if (linking.mode === "sourceTx" && linking.id) payload.sourceTransactionId = linking.id;
       if (linking.mode === "sourceEntity" && linking.id) payload.sourceEntityId = linking.id;
@@ -287,6 +328,19 @@ export function AddTransactionPage() {
             value={date}
             onChange={(e) => setDate(e.target.value)}
           />
+
+          {kind === "received" && activeSourceIdForCycle && (
+            <div style={{ marginTop: 12 }}>
+              <div className="muted" style={{ fontSize: 12, marginBottom: 4, color: "var(--primary)" }}>Select Month (Required)</div>
+              <select className="input" style={{ padding: 10 }} value={selectedCycleId} onChange={e => setSelectedCycleId(e.target.value)}>
+                <option value="">-- Choose a Month --</option>
+                {cycles.map(c => (
+                  <option key={c._id} value={c._id}>{formatMonthStr(c.period)} (Expected: {formatINR(c.expectedAmount)})</option>
+                ))}
+              </select>
+            </div>
+          )}
+
           <div className="row" style={{ justifyContent: "space-between", marginTop: 12 }}>
             <button className="btn btnGhost" onClick={() => setStep(preselectedEntityId ? 1 : 2)}>Back</button>
             <button className="btn btnPrimary" onClick={() => setStep(4)} disabled={!amount}>Next</button>
@@ -363,11 +417,23 @@ export function AddTransactionPage() {
                     }}
                   >
                     <div className="listItemTitle">{s.name}</div>
-                    <span className="muted">link</span>
+                    <span className="muted">{s.mode === "recurring" ? "recurring" : "link"}</span>
                   </button>
                 ))}
               </div>
             ) : <div className="muted" style={{ fontSize: 12 }}>No sources available.</div>}
+            
+            {linking.mode === "sourceEntity" && activeSourceIdForCycle && (
+              <div style={{ marginTop: 12, padding: 8, background: "rgba(0,0,0,0.02)", borderRadius: 6 }}>
+                <div className="muted" style={{ fontSize: 12, marginBottom: 4, color: "var(--primary)" }}>Select Month (Required)</div>
+                <select className="input" style={{ padding: 10, background: "var(--bg)" }} value={selectedCycleId} onChange={e => setSelectedCycleId(e.target.value)}>
+                  <option value="">-- Choose a Month --</option>
+                  {cycles.map(c => (
+                    <option key={c._id} value={c._id}>{formatMonthStr(c.period)} (Remaining Income: {formatINR(c.remainingAmount)})</option>
+                  ))}
+                </select>
+              </div>
+            )}
           </div>
 
           {linking.mode !== "none" && (
