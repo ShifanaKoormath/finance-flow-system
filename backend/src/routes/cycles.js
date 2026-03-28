@@ -32,7 +32,7 @@ async function generateCyclesForSource(source) {
     if (mMonth > 12) { mMonth = 1; mYear++; }
   }
 
-  const existingCycles = await RecurringCycle.find({ sourceId: source._id, period: { $in: periodStrings } }).lean();
+  const existingCycles = await RecurringCycle.find({ sourceId: source._id, period: { $in: periodStrings }, userId: source.userId }).lean();
   const existingPeriods = new Set(existingCycles.map(c => c.period));
 
   const expectedAmount = source.recurringConfig?.expectedAmount || source.expectedAmount || 0;
@@ -52,6 +52,7 @@ async function generateCyclesForSource(source) {
   for (const pStr of periodStrings) {
     if (!existingPeriods.has(pStr)) {
       toCreate.push({
+        userId: source.userId,
         sourceId: source._id,
         period: pStr,
         expectedAmount,
@@ -71,12 +72,12 @@ router.get("/:sourceId", async (req, res) => {
     const { sourceId } = req.params;
     if (!isValidObjectId(sourceId)) return badRequest(res, "Invalid source id");
 
-    const source = await Entity.findById(sourceId).lean();
+    const source = await Entity.findOne({ _id: sourceId, userId: req.user.userId }).lean();
     if (!source || source.type !== "source") return badRequest(res, "Valid source is required");
 
     await generateCyclesForSource(source);
 
-    const cycles = await RecurringCycle.find({ sourceId }).sort({ period: -1 }).lean();
+    const cycles = await RecurringCycle.find({ sourceId, userId: req.user.userId }).sort({ period: -1 }).lean();
     
     // We will dynamically return statuses
     const cyclesWithStatus = cycles.map(c => {
@@ -114,15 +115,16 @@ router.post("/", async (req, res) => {
     if (!period || !/^\d{4}-\d{2}$/.test(period)) return badRequest(res, "period must be YYYY-MM");
     if (expectedAmount === undefined || expectedAmount < 0) return badRequest(res, "expectedAmount must be >= 0");
 
-    const source = await Entity.findById(sourceId).lean();
+    const source = await Entity.findOne({ _id: sourceId, userId: req.user.userId }).lean();
     if (!source || source.type !== "source") return badRequest(res, "Valid source is required");
 
-    const existingCycle = await RecurringCycle.findOne({ sourceId, period });
+    const existingCycle = await RecurringCycle.findOne({ sourceId, period, userId: req.user.userId });
     if (existingCycle) {
       return badRequest(res, `Cycle for period ${period} already exists`);
     }
 
     const cycle = await RecurringCycle.create({
+      userId: req.user.userId,
       sourceId,
       period,
       expectedAmount,
@@ -142,7 +144,7 @@ router.get("/:cycleId/transactions", async (req, res) => {
     const { cycleId } = req.params;
     if (!isValidObjectId(cycleId)) return badRequest(res, "Invalid cycle id");
 
-    const txs = await Transaction.find({ cycleId })
+    const txs = await Transaction.find({ cycleId, userId: req.user.userId })
       .sort({ date: -1, createdAt: -1 })
       .populate("from", "name type mode")
       .populate("to", "name type mode")

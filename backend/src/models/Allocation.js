@@ -2,6 +2,12 @@ const mongoose = require("mongoose");
 
 const AllocationSchema = new mongoose.Schema(
   {
+    userId: {
+      type: mongoose.Schema.Types.ObjectId,
+      ref: "User",
+      required: true,
+      index: true,
+    },
     expenseTxId: {
       type: mongoose.Schema.Types.ObjectId,
       ref: "Transaction",

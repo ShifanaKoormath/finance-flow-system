@@ -22,6 +22,7 @@ router.post("/", async (req, res) => {
     }
 
     const doc = {
+      userId: req.user.userId,
       name: name.trim(),
       type,
     };
@@ -48,7 +49,7 @@ router.post("/", async (req, res) => {
 
     if (groupId) {
       if (!isValidObjectId(groupId)) return badRequest(res, "Invalid groupId");
-      const group = await Group.findById(groupId).lean();
+      const group = await Group.findOne({ _id: groupId, userId: req.user.userId }).lean();
       if (!group) return badRequest(res, "Group not found");
       if (group.type !== type) return badRequest(res, "Group type must match entity type");
       doc.groupId = group._id;
@@ -72,7 +73,7 @@ router.put("/:id", async (req, res) => {
 
     const { groupId, name } = req.body ?? {};
     
-    const entity = await Entity.findById(id);
+    const entity = await Entity.findOne({ _id: id, userId: req.user.userId });
     if (!entity) return notFound(res, "Entity not found");
 
     if (typeof name === "string" && name.trim()) {
@@ -84,7 +85,7 @@ router.put("/:id", async (req, res) => {
         entity.groupId = undefined;
       } else {
         if (!isValidObjectId(groupId)) return badRequest(res, "Invalid groupId");
-        const group = await Group.findById(groupId).lean();
+        const group = await Group.findOne({ _id: groupId, userId: req.user.userId }).lean();
         if (!group) return badRequest(res, "Group not found");
         if (group.type !== entity.type) return badRequest(res, "Group type must match entity type");
         entity.groupId = group._id;
@@ -100,9 +101,35 @@ router.put("/:id", async (req, res) => {
   }
 });
 
+router.delete("/:id", async (req, res) => {
+  try {
+    const { id } = req.params;
+    if (!isValidObjectId(id)) return badRequest(res, "Invalid entity id");
+
+    const entity = await Entity.findOne({ _id: id, userId: req.user.userId });
+    if (!entity) return notFound(res, "Entity not found");
+
+    // Prevent deletion if transactions exist
+    const hasTransactions = await mongoose.model("Transaction").exists({
+      $or: [{ from: id }, { to: id }],
+      userId: req.user.userId
+    });
+
+    if (hasTransactions) {
+      return res.status(400).json({ error: "Cannot delete entity with existing transactions." });
+    }
+
+    await Entity.deleteOne({ _id: id, userId: req.user.userId });
+    return res.json({ success: true });
+  } catch (err) {
+    console.error("DELETE /api/entities/:id error:", err);
+    return res.status(500).json({ error: err.message || "Failed to delete entity" });
+  }
+});
+
 router.get("/", async (req, res) => {
   try {
-    const entities = await Entity.find({}).sort({ type: 1, name: 1 }).lean();
+    const entities = await Entity.find({ userId: req.user.userId }).sort({ type: 1, name: 1 }).lean();
     return res.json(entities);
   } catch (err) {
     // eslint-disable-next-line no-console

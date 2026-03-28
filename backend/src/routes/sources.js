@@ -16,17 +16,18 @@ router.get("/:id/summary", async (req, res) => {
     const { id } = req.params;
     if (!isValidObjectId(id)) return badRequest(res, "Invalid source id");
 
-    const source = await Entity.findById(id).lean();
+    const source = await Entity.findOne({ _id: id, userId: req.user.userId }).lean();
     if (!source) return notFound(res, "Source not found");
     if (source.type !== "source") return badRequest(res, "Entity is not a source");
 
     // 1) receivedTxs: transactions where from = source (money coming in from this source)
-    const receivedTxs = await Transaction.find({ from: id }).sort({ date: -1, createdAt: -1 }).lean();
+    const receivedTxs = await Transaction.find({ from: id, userId: req.user.userId }).sort({ date: -1, createdAt: -1 }).lean();
     const receivedIds = receivedTxs.map((t) => t._id);
 
     // 3) usageTxs: transactions that point to those receipts OR general source usage
     const usageTxs = await Transaction.find({
       $or: [{ sourceTransactionId: { $in: receivedIds } }, { sourceEntityId: id }],
+      userId: req.user.userId
     })
       .populate("to", "name type")
       .lean();

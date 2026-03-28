@@ -1,7 +1,12 @@
 async function request(path, { method = "GET", body } = {}) {
+  const token = localStorage.getItem("token");
+  const headers = {};
+  if (body) headers["Content-Type"] = "application/json";
+  if (token) headers["Authorization"] = `Bearer ${token}`;
+
   const res = await fetch(path, {
     method,
-    headers: body ? { "Content-Type": "application/json" } : undefined,
+    headers: Object.keys(headers).length > 0 ? headers : undefined,
     body: body ? JSON.stringify(body) : undefined,
   });
 
@@ -9,6 +14,9 @@ async function request(path, { method = "GET", body } = {}) {
   const data = isJson ? await res.json() : null;
 
   if (!res.ok) {
+    if (res.status === 401) {
+      window.dispatchEvent(new Event("auth:unauthorized"));
+    }
     const msg = data?.error || `Request failed (${res.status})`;
     const err = new Error(msg);
     err.status = res.status;
@@ -19,6 +27,12 @@ async function request(path, { method = "GET", body } = {}) {
 }
 
 export const api = {
+  login(payload) {
+    return request("/api/auth/login", { method: "POST", body: payload });
+  },
+  register(payload) {
+    return request("/api/auth/register", { method: "POST", body: payload });
+  },
   health() {
     return request("/api/health");
   },
@@ -33,6 +47,12 @@ export const api = {
   },
   createTransaction(payload) {
     return request("/api/transactions", { method: "POST", body: payload });
+  },
+  editTransaction(id, payload) {
+    return request(`/api/transactions/${id}`, { method: "PUT", body: payload });
+  },
+  deleteTransaction(id) {
+    return request(`/api/transactions/${id}`, { method: "DELETE" });
   },
   balances() {
     return request("/api/balances");
@@ -49,6 +69,9 @@ export const api = {
   },
   updateEntity(id, payload) {
     return request(`/api/entities/${id}`, { method: "PUT", body: payload });
+  },
+  deleteEntity(id) {
+    return request(`/api/entities/${id}`, { method: "DELETE" });
   },
   listGroups() {
     return request("/api/groups");

@@ -8,9 +8,9 @@ const router = express.Router();
 router.get("/", async (req, res) => {
   try {
     const [entities, groups, txs] = await Promise.all([
-      Entity.find({}).sort({ type: 1, name: 1 }).lean(),
-      Group.find({}).sort({ type: 1, name: 1 }).lean(),
-      Transaction.find({}).select("amount from to").lean(),
+      Entity.find({ userId: req.user.userId }).sort({ type: 1, name: 1 }).lean(),
+      Group.find({ userId: req.user.userId }).sort({ type: 1, name: 1 }).lean(),
+      Transaction.find({ userId: req.user.userId }).select("amount from to").lean(),
     ]);
 
     const received = new Map(); // entityId -> number

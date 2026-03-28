@@ -2,6 +2,12 @@ const mongoose = require("mongoose");
 
 const RecurringCycleSchema = new mongoose.Schema(
   {
+    userId: {
+      type: mongoose.Schema.Types.ObjectId,
+      ref: "User",
+      required: true,
+      index: true,
+    },
     sourceId: {
       type: mongoose.Schema.Types.ObjectId,
       ref: "Entity",

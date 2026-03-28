@@ -6,6 +6,7 @@ const SOURCE_FREQUENCIES = ["monthly"];
 
 const EntitySchema = new mongoose.Schema(
   {
+    userId: { type: mongoose.Schema.Types.ObjectId, ref: "User", required: true, index: true },
     name: { type: String, required: true, trim: true },
     type: { type: String, required: true, enum: ENTITY_TYPES, index: true },
     groupId: {
@@ -36,7 +37,7 @@ const EntitySchema = new mongoose.Schema(
   { timestamps: true }
 );
 
-EntitySchema.index({ type: 1, name: 1 }, { unique: true });
+EntitySchema.index({ userId: 1, type: 1, name: 1 }, { unique: true });
 
 module.exports = {
   Entity: mongoose.model("Entity", EntitySchema),

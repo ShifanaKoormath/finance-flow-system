@@ -66,11 +66,6 @@ export function HomePage() {
   }, [loc.state]);
 
   useEffect(() => {
-    const done = localStorage.getItem("ft_setup_done") === "1";
-    if (!done) nav("/setup", { replace: true });
-  }, [nav]);
-
-  useEffect(() => {
     let alive = true;
     async function load() {
       setLoading(true);
@@ -78,6 +73,15 @@ export function HomePage() {
       try {
         const [balData, txs] = await Promise.all([api.balances(), api.listTransactions()]);
         if (!alive) return;
+        
+        const totalEntities = (balData.groups || []).length + (balData.ungrouped || []).length;
+        if (totalEntities <= 3 && localStorage.getItem("ft_setup_done") !== "1") {
+           nav("/setup", { replace: true });
+           return;
+        } else if (totalEntities > 3) {
+           localStorage.setItem("ft_setup_done", "1");
+        }
+
         setData({
            groups: balData.groups || [],
            ungrouped: (balData.ungrouped || []).filter(b => b.name !== "You")

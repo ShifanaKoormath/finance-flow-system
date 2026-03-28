@@ -1,5 +1,5 @@
 import { useEffect, useMemo, useState } from "react";
-import { useLocation, useNavigate } from "react-router-dom";
+import { useLocation, useNavigate, useParams } from "react-router-dom";
 import { api } from "../api";
 import { formatINR, safeTrim } from "../utils";
 
@@ -46,8 +46,50 @@ export function AddTransactionPage() {
   const [error, setError] = useState("");
   const [searchQuery, setSearchQuery] = useState("");
 
+  const { txId } = useParams();
+  const [editingLoaded, setEditingLoaded] = useState(false);
+
   const [cycles, setCycles] = useState([]);
   const [selectedCycleId, setSelectedCycleId] = useState("");
+
+  const you = useMemo(() => entities.find((e) => e.type === "person" && e.name === "You"), [entities]);
+  const selectedEntity = useMemo(() => entities.find((e) => String(e._id) === String(selectedEntityId)), [entities, selectedEntityId]);
+
+  useEffect(() => {
+    if (txId && transactions.length > 0 && !editingLoaded) {
+      const tx = transactions.find(t => String(t._id) === txId);
+      if (tx) {
+        const isIncome = tx.type === "income";
+        const youId = you ? String(you._id) : "";
+        
+        let otherEntityId = "";
+        let k = "";
+        
+        if (isIncome) {
+           k = "received";
+           otherEntityId = String(tx.from?._id || tx.from);
+        } else {
+           k = "gave";
+           otherEntityId = String(tx.to?._id || tx.to);
+        }
+
+        setKind(k);
+        setSelectedEntityId(otherEntityId);
+        setAmount(String(tx.amount));
+        if (tx.date) setDate(new Date(tx.date).toISOString().substring(0, 10));
+        setTitle(tx.title || "");
+        setNote(tx.note || "");
+        
+        if (tx.sourceTransactionId) setLinking({ mode: "sourceTx", id: String(tx.sourceTransactionId) });
+        else if (tx.sourceEntityId) setLinking({ mode: "sourceEntity", id: String(tx.sourceEntityId) });
+        
+        if (tx.cycleId) setSelectedCycleId(String(tx.cycleId));
+        
+        setStep(3); // Jump to amount input manually
+      }
+      setEditingLoaded(true);
+    }
+  }, [txId, transactions, editingLoaded, you]);
 
   useEffect(() => {
     let alive = true;
@@ -67,9 +109,6 @@ export function AddTransactionPage() {
       alive = false;
     };
   }, []);
-
-  const you = useMemo(() => entities.find((e) => e.type === "person" && e.name === "You"), [entities]);
-  const selectedEntity = useMemo(() => entities.find((e) => String(e._id) === String(selectedEntityId)), [entities, selectedEntityId]);
 
   const recentEntities = useMemo(() => {
     const seen = new Set();
@@ -173,9 +212,13 @@ export function AddTransactionPage() {
       if (linking.mode === "sourceTx" && linking.id) payload.sourceTransactionId = linking.id;
       if (linking.mode === "sourceEntity" && linking.id) payload.sourceEntityId = linking.id;
 
-      await api.createTransaction(payload);
-      bumpUsage(selectedEntityId);
-      nav("/", { replace: true, state: { celebrated: true } });
+      if (txId) {
+        await api.editTransaction(txId, payload);
+      } else {
+        await api.createTransaction(payload);
+        bumpUsage(selectedEntityId);
+      }
+      nav(-1, { replace: true, state: { celebrated: true } });
     } catch (e) {
       setError(e?.message || "Failed to create");
     } finally {
@@ -186,7 +229,7 @@ export function AddTransactionPage() {
   return (
     <div className="col">
       <div className="card cardPad">
-        <div style={{ fontWeight: 900, fontSize: 18 }}>Add transaction</div>
+        <div style={{ fontWeight: 900, fontSize: 18 }}>{txId ? "Edit transaction" : "Add transaction"}</div>
         <div className="muted" style={{ marginTop: 6 }}>
           Keep it simple: you gave / you received.
         </div>
@@ -204,10 +247,10 @@ export function AddTransactionPage() {
             <span className="muted">Choose direction</span>
           </div>
           <div className="row">
-            <button className={`btn ${kind === "gave" ? "btnPrimary" : ""}`} onClick={() => { setKind("gave"); setStep(selectedEntityId ? 3 : 2); }}>
+            <button className={`btn ${kind === "gave" ? "btnPrimary" : ""}`} onClick={() => { setKind("gave"); setStep(selectedEntityId && !txId ? 3 : 2); }}>
               Money You Gave
             </button>
-            <button className={`btn ${kind === "received" ? "btnPrimary" : ""}`} onClick={() => { setKind("received"); setStep(selectedEntityId ? 3 : 2); }}>
+            <button className={`btn ${kind === "received" ? "btnPrimary" : ""}`} onClick={() => { setKind("received"); setStep(selectedEntityId && !txId ? 3 : 2); }}>
               Money You Received
             </button>
           </div>

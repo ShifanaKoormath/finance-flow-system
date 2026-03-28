@@ -224,6 +224,26 @@ export function EntityPage() {
     }
   }
 
+  async function handleDeleteEntity() {
+    if (!window.confirm("Are you sure you want to delete this entity?")) return;
+    try {
+      await api.deleteEntity(entityId);
+      nav("/", { replace: true });
+    } catch (e) {
+      alert(e.message || "Failed to delete entity");
+    }
+  }
+
+  async function handleDeleteTx(txId) {
+    if (!window.confirm("Are you sure you want to delete this transaction?")) return;
+    try {
+      await api.deleteTransaction(txId);
+      window.location.reload();
+    } catch (e) {
+      alert(e.message || "Failed to delete transaction");
+    }
+  }
+
   return (
     <div className="col">
       <div className="card cardPad">
@@ -254,6 +274,7 @@ export function EntityPage() {
 
         <div className="row" style={{ marginTop: 12 }}>
           <button className="btn btnPrimary" onClick={() => nav(`/add?entityId=${entityId}`)}>+ Add Transaction</button>
+          <button className="btn btnGhost" style={{ color: "var(--danger)", padding: "8px 12px" }} onClick={handleDeleteEntity}>Delete Entity</button>
           <button className="btn btnGhost" onClick={() => nav("/")}>Back</button>
         </div>
       </div>
@@ -519,7 +540,13 @@ export function EntityPage() {
                         {t.title ? ` • ${t.title}` : ""}
                       </div>
                     </div>
-                    <div style={{ fontWeight: 900 }}>{formatINR(t.amount)}</div>
+                    <div style={{ textAlign: "right" }}>
+                      <div style={{ fontWeight: 900 }}>{formatINR(t.amount)}</div>
+                      <div className="row" style={{ gap: 8, marginTop: 4, justifyContent: "flex-end" }}>
+                        <button className="btnGhost" style={{ padding: 0, fontSize: 11, color: "var(--blue)" }} onClick={() => nav(`/edit/${t._id}`)}>Edit</button>
+                        <button className="btnGhost" style={{ padding: 0, fontSize: 11, color: "var(--danger)" }} onClick={() => handleDeleteTx(t._id)}>Delete</button>
+                      </div>
+                    </div>
                   </div>
                 );
               })}

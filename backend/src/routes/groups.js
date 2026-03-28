@@ -16,7 +16,7 @@ router.post("/", async (req, res) => {
     if (!name || typeof name !== "string") return badRequest(res, "name is required");
     if (!type || !["person", "source", "expense"].includes(type)) return badRequest(res, "valid type is required");
 
-    const group = await Group.create({ name: name.trim(), type });
+    const group = await Group.create({ userId: req.user.userId, name: name.trim(), type });
     return res.status(201).json(group);
   } catch (err) {
     if (err?.code === 11000) return res.status(409).json({ error: "Group already exists" });
@@ -27,7 +27,7 @@ router.post("/", async (req, res) => {
 
 router.get("/", async (req, res) => {
   try {
-    const groups = await Group.find({}).sort({ type: 1, name: 1 }).lean();
+    const groups = await Group.find({ userId: req.user.userId }).sort({ type: 1, name: 1 }).lean();
     return res.json(groups);
   } catch (err) {
     console.error("GET /api/groups error:", err);
@@ -43,7 +43,7 @@ router.put("/:id", async (req, res) => {
     const { name } = req.body ?? {};
     if (!name || typeof name !== "string") return badRequest(res, "name is required");
 
-    const group = await Group.findById(id);
+    const group = await Group.findOne({ _id: id, userId: req.user.userId });
     if (!group) return notFound(res, "Group not found");
 
     group.name = name.trim();
@@ -61,10 +61,10 @@ router.delete("/:id", async (req, res) => {
     const { id } = req.params;
     if (!isValidObjectId(id)) return badRequest(res, "Invalid group id");
 
-    const group = await Group.findByIdAndDelete(id);
+    const group = await Group.findOneAndDelete({ _id: id, userId: req.user.userId });
     if (!group) return notFound(res, "Group not found");
 
-    await Entity.updateMany({ groupId: id }, { $unset: { groupId: "" } });
+    await Entity.updateMany({ groupId: id, userId: req.user.userId }, { $unset: { groupId: "" } });
 
     return res.json({ success: true });
   } catch (err) {

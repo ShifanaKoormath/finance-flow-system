@@ -52,10 +52,25 @@ router.post("/", async (req, res) => {
       return badRequest(res, "Cannot provide both sourceTransactionId and sourceEntityId");
     }
 
-    // 4. Verify Entity References
+    // 4. Guarantee "You" Entity Fallback per User's Instruction
+    let you = await Entity.findOne({
+      userId: req.user.userId,
+      name: "You",
+      type: "person"
+    });
+
+    if (!you) {
+      you = await Entity.create({
+        name: "You",
+        type: "person",
+        userId: req.user.userId
+      });
+    }
+
+    // 5. Verify Entity References
     const [fromEntity, toEntity] = await Promise.all([
-      Entity.findById(from).lean(), 
-      Entity.findById(to).lean()
+      Entity.findOne({ _id: from, userId: req.user.userId }).lean(), 
+      Entity.findOne({ _id: to, userId: req.user.userId }).lean()
     ]);
     if (!fromEntity) return notFound(res, "from entity not found");
     if (!toEntity) return notFound(res, "to entity not found");
@@ -71,6 +86,7 @@ router.post("/", async (req, res) => {
 
     // 6. Create Transaction
     const txData = {
+      userId: req.user.userId,
       amount: amt,
       from,
       to,
@@ -114,6 +130,7 @@ router.post("/", async (req, res) => {
           await incTx.save();
 
           await Allocation.create({
+            userId: req.user.userId,
             expenseTxId: tx._id,
             incomeTxId: incTx._id,
             amountAllocated: toAllocate
@@ -132,7 +149,7 @@ router.post("/", async (req, res) => {
 
 router.get("/", async (req, res) => {
   try {
-    const txs = await Transaction.find({})
+    const txs = await Transaction.find({ userId: req.user.userId })
       .sort({ date: -1, createdAt: -1 })
       .populate("from", "name type mode")
       .populate("to", "name type mode")
@@ -145,16 +162,72 @@ router.get("/", async (req, res) => {
   }
 });
 
+// PUT /api/transactions/:id
+router.put("/:id", async (req, res) => {
+  try {
+    const { id } = req.params;
+    if (!isValidObjectId(id)) return badRequest(res, "Invalid transaction id");
+
+    const { amount, title, note, date, sourceTransactionId, sourceEntityId, cycleId, type } = req.body ?? {};
+
+    const tx = await Transaction.findOne({ _id: id, userId: req.user.userId });
+    if (!tx) return notFound(res, "Transaction not found");
+
+    const amt = Number(amount);
+    if (amount !== undefined) {
+      if (!Number.isFinite(amt) || amt <= 0) return badRequest(res, "amount must be a positive number");
+      tx.amount = amt;
+    }
+
+    if (title !== undefined) tx.title = typeof title === "string" && title.trim() ? title.trim() : undefined;
+    if (note !== undefined) tx.note = typeof note === "string" && note.trim() ? note.trim() : undefined;
+    if (type !== undefined && (type === "income" || type === "expense")) tx.type = type;
+    
+    if (date !== undefined) {
+      const parsed = new Date(date);
+      if (!isNaN(parsed.getTime())) tx.date = parsed;
+    }
+
+    if (sourceTransactionId !== undefined) tx.sourceTransactionId = sourceTransactionId ? sourceTransactionId : undefined;
+    if (sourceEntityId !== undefined) tx.sourceEntityId = sourceEntityId ? sourceEntityId : undefined;
+    if (cycleId !== undefined) tx.cycleId = cycleId ? cycleId : undefined;
+
+    await tx.save();
+    return res.json(tx);
+  } catch (err) {
+    console.error("PUT /api/transactions/:id error:", err);
+    return res.status(500).json({ error: err.message || "Failed to update transaction" });
+  }
+});
+
+// DELETE /api/transactions/:id
+router.delete("/:id", async (req, res) => {
+  try {
+    const { id } = req.params;
+    if (!isValidObjectId(id)) return badRequest(res, "Invalid transaction id");
+
+    const tx = await Transaction.findOneAndDelete({ _id: id, userId: req.user.userId });
+    if (!tx) return notFound(res, "Transaction not found");
+
+    // Cleanup logic for cycles/allocations is omitted to keep it simple as requested,
+    // but the transaction itself is removed.
+    return res.json({ success: true });
+  } catch (err) {
+    console.error("DELETE /api/transactions/:id error:", err);
+    return res.status(500).json({ error: err.message || "Failed to delete transaction" });
+  }
+});
+
 // GET /api/transaction/:id/usage
 router.get("/:id/usage", async (req, res) => {
   try {
     const { id } = req.params;
     if (!isValidObjectId(id)) return badRequest(res, "Invalid transaction id");
 
-    const tx = await Transaction.findById(id).lean();
+    const tx = await Transaction.findOne({ _id: id, userId: req.user.userId }).lean();
     if (!tx) return notFound(res, "Transaction not found");
 
-    const usageTxs = await Transaction.find({ sourceTransactionId: id })
+    const usageTxs = await Transaction.find({ sourceTransactionId: id, userId: req.user.userId })
       .sort({ date: -1, createdAt: -1 })
       .populate("to", "name type")
       .lean();
@@ -193,7 +266,7 @@ router.get("/monthly-expenses", async (req, res) => {
       return res.status(400).json({ error: "month parameter YYYY-MM is required" });
     }
 
-    const expenseEntities = await Entity.find({ type: "expense" }).select("_id").lean();
+    const expenseEntities = await Entity.find({ type: "expense", userId: req.user.userId }).select("_id").lean();
     const expenseIds = expenseEntities.map((e) => e._id);
 
     const [yearStr, monthStr] = month.split("-");
@@ -202,7 +275,8 @@ router.get("/monthly-expenses", async (req, res) => {
 
     const txs = await Transaction.find({
       to: { $in: expenseIds },
-      date: { $gte: startDate, $lt: endDate }
+      date: { $gte: startDate, $lt: endDate },
+      userId: req.user.userId
     })
       .sort({ date: -1, createdAt: -1 })
       .populate("to", "name type")
