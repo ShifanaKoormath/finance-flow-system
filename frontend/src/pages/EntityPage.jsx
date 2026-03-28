@@ -43,7 +43,7 @@ export function EntityPage() {
         const [ents, bals, txs, grps] = await Promise.all([api.listEntities(), api.balances(), api.listTransactions(), api.listGroups()]);
         if (!alive) return;
         setEntities(ents);
-        
+
         let flatBalances = [];
         if (bals.groups) bals.groups.forEach(g => flatBalances.push(...g.children));
         if (bals.ungrouped) flatBalances.push(...bals.ungrouped);
@@ -171,7 +171,7 @@ export function EntityPage() {
     try {
       const expectedAmount = entity.recurringConfig?.expectedAmount || entity.expectedAmount || 0;
       const newCycle = await api.createCycle({ sourceId: entityId, period, expectedAmount });
-      setCycles(prev => [newCycle, ...prev].sort((a,b) => b.period.localeCompare(a.period)));
+      setCycles(prev => [newCycle, ...prev].sort((a, b) => b.period.localeCompare(a.period)));
     } catch (e) {
       alert(e.message || "Failed to create month cycle");
     }
@@ -252,7 +252,7 @@ export function EntityPage() {
             <div style={{ fontWeight: 900, fontSize: 18 }}>{entity.name}</div>
             <div className="muted" style={{ fontSize: 12, marginTop: 4 }}>{entity.type}</div>
             <div style={{ marginTop: 8, fontSize: 13, display: "flex", gap: 6, alignItems: "center" }}>
-              <span className="muted">Group:</span> 
+              <span className="muted">Group:</span>
               <span style={{ fontWeight: 600 }}>{currentGroup ? currentGroup.name : "None"}</span>
               <button className="btnGhost" style={{ padding: "2px 6px", fontSize: 12, color: "var(--blue)", border: "none", cursor: "pointer", background: "none" }} onClick={() => setShowGroupModal(true)}>[Change]</button>
             </div>
@@ -341,31 +341,31 @@ export function EntityPage() {
           <div className="card cardPad col" style={{ width: "100%", maxWidth: 400, border: "1px solid var(--border)" }}>
             <h3>Change Group</h3>
             <div className="list">
-              <button 
-                 className="listItem" 
-                 onClick={() => assignGroup(null)}
-                 style={{ border: entity.groupId ? "1px solid var(--border)" : "2px solid var(--accent)", background: "transparent" }}>
+              <button
+                className="listItem"
+                onClick={() => assignGroup(null)}
+                style={{ border: entity.groupId ? "1px solid var(--border)" : "2px solid var(--accent)", background: "transparent" }}>
                 <div>None</div>
               </button>
               {groups.filter(g => g.type === entity.type).map(g => (
-                <button 
-                   key={g._id} 
-                   className="listItem" 
-                   onClick={() => assignGroup(g._id)}
-                   style={{ border: entity.groupId === g._id ? "2px solid var(--accent)" : "1px solid var(--border)", background: "transparent" }}>
+                <button
+                  key={g._id}
+                  className="listItem"
+                  onClick={() => assignGroup(g._id)}
+                  style={{ border: entity.groupId === g._id ? "2px solid var(--accent)" : "1px solid var(--border)", background: "transparent" }}>
                   <div>📁 {g.name}</div>
                 </button>
               ))}
             </div>
-            
+
             <div style={{ marginTop: 16, borderTop: "1px solid var(--border)", paddingTop: 16 }}>
               <div className="muted" style={{ fontSize: 12, marginBottom: 8 }}>Or create new group</div>
               <div className="row">
-                <input className="input" placeholder="New group name..." value={newGroupName} onChange={e=>setNewGroupName(e.target.value)} disabled={isSubmittingGroup}/>
+                <input className="input" placeholder="New group name..." value={newGroupName} onChange={e => setNewGroupName(e.target.value)} disabled={isSubmittingGroup} />
                 <button className="btn btnPrimary" disabled={isSubmittingGroup || !newGroupName.trim()} onClick={createAndAssignGroup}>Create</button>
               </div>
             </div>
-            
+
             <button className="btn" style={{ marginTop: 16 }} onClick={() => setShowGroupModal(false)}>Cancel</button>
           </div>
         </div>
@@ -425,13 +425,13 @@ export function EntityPage() {
               <div style={{ fontWeight: 900 }}>{formatINR(projectStats.totalAmount)}</div>
             </div>
           </div>
-          
+
           <div style={{ background: "rgba(0,0,0,0.1)", height: 8, borderRadius: 4, marginTop: 12, overflow: "hidden" }}>
-             <div style={{ 
-               background: "var(--primary)", 
-               height: "100%", 
-               width: `${Math.min(100, (projectStats.totalReceived / (projectStats.totalAmount || 1)) * 100)}%` 
-             }} />
+            <div style={{
+              background: "var(--primary)",
+              height: "100%",
+              width: `${Math.min(100, (projectStats.totalReceived / (projectStats.totalAmount || 1)) * 100)}%`
+            }} />
           </div>
         </div>
       ) : null}
@@ -469,39 +469,39 @@ export function EntityPage() {
                           {usageBySourceTx[String(t._id)].map((g) => {
                             const expanded = expandedUsage[`${t._id}_${g.entityId}`];
                             return (
-                            <div key={g.entityId} className="col" style={{ gap: 0 }}>
-                              <button 
-                                className="listItem" 
-                                style={{ width: "100%", textAlign: "left", cursor: "pointer", borderBottomLeftRadius: expanded ? 0 : 14, borderBottomRightRadius: expanded ? 0 : 14 }}
-                                onClick={() => toggleExpandUsage(String(t._id), String(g.entityId))}
-                              >
-                                <div>
-                                  <div className="listItemTitle">{g.entityName}</div>
-                                  <div className="muted" style={{ fontSize: 12 }}>
-                                    {g.transactions.length} tx {expanded ? "▲" : "▼"}
+                              <div key={g.entityId} className="col" style={{ gap: 0 }}>
+                                <button
+                                  className="listItem"
+                                  style={{ width: "100%", textAlign: "left", cursor: "pointer", borderBottomLeftRadius: expanded ? 0 : 14, borderBottomRightRadius: expanded ? 0 : 14 }}
+                                  onClick={() => toggleExpandUsage(String(t._id), String(g.entityId))}
+                                >
+                                  <div>
+                                    <div className="listItemTitle">{g.entityName}</div>
+                                    <div className="muted" style={{ fontSize: 12 }}>
+                                      {g.transactions.length} tx {expanded ? "▲" : "▼"}
+                                    </div>
                                   </div>
-                                </div>
-                                <div style={{ fontWeight: 900 }}>{formatINR(g.totalAmount)}</div>
-                              </button>
-                              
-                              {/* Level 3: Individual usage transactions */}
-                              {expanded && (
-                                <div className="col" style={{ padding: "8px 12px 12px 24px", background: "rgba(255,255,255,0.02)", border: "1px solid var(--border)", borderTop: "none", borderBottomLeftRadius: 14, borderBottomRightRadius: 14 }}>
-                                  {g.transactions.map((tx, i) => {
-                                    const d = new Date(tx.date);
-                                    const dateStr = d.toLocaleDateString("en-US", { month: "short", day: "numeric" });
-                                    return (
-                                      <div key={i} className="row" style={{ justifyContent: "space-between", padding: "6px 0", borderBottom: i < g.transactions.length - 1 ? "1px solid rgba(255,255,255,0.05)" : "none" }}>
-                                        <div>
-                                          <div style={{ fontWeight: 700, fontSize: 14 }}>{formatINR(tx.amount)}</div>
-                                          <div className="muted" style={{ fontSize: 11 }}>{dateStr} • {tx.title || "No title"}</div>
+                                  <div style={{ fontWeight: 900 }}>{formatINR(g.totalAmount)}</div>
+                                </button>
+
+                                {/* Level 3: Individual usage transactions */}
+                                {expanded && (
+                                  <div className="col" style={{ padding: "8px 12px 12px 24px", background: "rgba(255,255,255,0.02)", border: "1px solid var(--border)", borderTop: "none", borderBottomLeftRadius: 14, borderBottomRightRadius: 14 }}>
+                                    {g.transactions.map((tx, i) => {
+                                      const d = new Date(tx.date);
+                                      const dateStr = d.toLocaleDateString("en-US", { month: "short", day: "numeric" });
+                                      return (
+                                        <div key={i} className="row" style={{ justifyContent: "space-between", padding: "6px 0", borderBottom: i < g.transactions.length - 1 ? "1px solid rgba(255,255,255,0.05)" : "none" }}>
+                                          <div>
+                                            <div style={{ fontWeight: 700, fontSize: 14 }}>{formatINR(tx.amount)}</div>
+                                            <div className="muted" style={{ fontSize: 11 }}>{dateStr} • {tx.title || "No title"}</div>
+                                          </div>
                                         </div>
-                                      </div>
-                                    );
-                                  })}
-                                </div>
-                              )}
-                            </div>
+                                      );
+                                    })}
+                                  </div>
+                                )}
+                              </div>
                             );
                           })}
                         </div>

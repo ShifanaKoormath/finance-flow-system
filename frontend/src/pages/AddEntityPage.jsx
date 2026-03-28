@@ -28,7 +28,7 @@ export function AddEntityPage() {
     let alive = true;
     api.listGroups().then((grps) => {
       if (alive) setGroups(grps);
-    }).catch(() => {});
+    }).catch(() => { });
     return () => { alive = false; };
   }, []);
 
@@ -112,25 +112,25 @@ export function AddEntityPage() {
           <div className="row" style={{ justifyContent: "space-between", marginBottom: 4 }}>
             <div className="muted" style={{ fontSize: 12 }}>Group Under (Optional)</div>
             {!showNewGroupInput && (
-              <button 
-                className="btnGhost muted" 
-                style={{ fontSize: 12, padding: 0, height: "auto", color: "var(--blue)", border: "none", cursor: "pointer", background: "none" }} 
+              <button
+                className="btnGhost muted"
+                style={{ fontSize: 12, padding: 0, height: "auto", color: "var(--blue)", border: "none", cursor: "pointer", background: "none" }}
                 onClick={() => setShowNewGroupInput(true)}
               >
                 + Create new group
               </button>
             )}
           </div>
-          
+
           {showNewGroupInput ? (
             <div className="card cardPad col" style={{ background: "rgba(0,0,0,0.02)", border: "1px solid var(--border)", padding: 12 }}>
               <div className="muted" style={{ fontSize: 12, marginBottom: 8 }}>New {type} Group</div>
-              <input 
-                className="input" 
-                placeholder="Group name" 
-                value={newGroupName} 
-                onChange={e => setNewGroupName(e.target.value)} 
-                disabled={isCreatingGroup} 
+              <input
+                className="input"
+                placeholder="Group name"
+                value={newGroupName}
+                onChange={e => setNewGroupName(e.target.value)}
+                disabled={isCreatingGroup}
                 autoFocus
               />
               <div className="row" style={{ justifyContent: "flex-end", marginTop: 8, gap: 8 }}>
@@ -167,7 +167,7 @@ export function AddEntityPage() {
               <button className={`btn ${mode === "recurring" ? "btnPrimary" : "btnGhost"}`} onClick={() => setMode("recurring")}>Recurring</button>
               <button className={`btn ${mode === "project" ? "btnPrimary" : "btnGhost"}`} onClick={() => setMode("project")}>Project</button>
             </div>
-            
+
             {mode === "recurring" && (
               <div style={{ marginTop: 12, display: "flex", gap: 8 }}>
                 <div style={{ flex: 1 }}>

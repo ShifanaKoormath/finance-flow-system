@@ -6,10 +6,14 @@
   --border: #e5e7eb;
   --shadow: 0 4px 6px -1px rgba(0, 0, 0, 0.05), 0 2px 4px -2px rgba(0, 0, 0, 0.05);
   --accent: #7c5cff;
-  --danger: #ef4444; /* red */
-  --ok: #10b981; /* green */
-  --blue: #3b82f6; /* sources */
-  --orange: #f97316; /* expenses */
+  --danger: #ef4444;
+  /* red */
+  --ok: #10b981;
+  /* green */
+  --blue: #3b82f6;
+  /* sources */
+  --orange: #f97316;
+  /* expenses */
 
   font-family: system-ui, "Segoe UI", Roboto, sans-serif;
   color: var(--text);
@@ -22,6 +26,7 @@
 
 body {
   margin: 0;
+  -webkit-tap-highlight-color: transparent;
 }
 
 a {
@@ -31,19 +36,39 @@ a {
 
 .appShell {
   min-height: 100svh;
+  display: flex;
+  flex-direction: column;
 }
 
 @keyframes toastSlide {
-  0% { transform: translateY(100%); opacity: 0; }
-  10% { transform: translateY(0); opacity: 1; }
-  90% { transform: translateY(0); opacity: 1; }
-  100% { transform: translateY(100%); opacity: 0; }
+  0% {
+    transform: translateY(100%);
+    opacity: 0;
+  }
+
+  10% {
+    transform: translateY(0);
+    opacity: 1;
+  }
+
+  90% {
+    transform: translateY(0);
+    opacity: 1;
+  }
+
+  100% {
+    transform: translateY(100%);
+    opacity: 0;
+  }
 }
 
 .toastContainer {
   position: fixed;
-  bottom: 24px; left: 0; right: 0;
-  display: flex; justify-content: center;
+  bottom: 100px;
+  left: 0;
+  right: 0;
+  display: flex;
+  justify-content: center;
   pointer-events: none;
   z-index: 9999;
   animation: toastSlide 3s ease-in-out forwards;
@@ -59,33 +84,15 @@ a {
 }
 
 .topbar {
-  position: sticky;
-  top: 0;
-  z-index: 10;
-  border-bottom: 1px solid var(--border);
-  background: rgba(248, 250, 252, 0.85);
-  backdrop-filter: blur(10px);
-}
-
-.brand {
-  padding: 14px 16px;
-  max-width: 980px;
-  margin: 0 auto;
-}
-.brandTitle {
-  font-weight: 700;
-  letter-spacing: 0.2px;
-}
-.brandSub {
-  color: var(--muted);
-  font-size: 12px;
-  margin-top: 2px;
+  display: none;
 }
 
 .main {
   max-width: 980px;
   margin: 0 auto;
   padding: 16px;
+  width: 100%;
+  flex: 1;
 }
 
 .card {
@@ -93,7 +100,7 @@ a {
   border: 1px solid var(--border);
   border-radius: 16px;
   box-shadow: var(--shadow);
-  margin-bottom: 16px;
+  margin-bottom: 12px;
 }
 
 .cardPad {
@@ -121,17 +128,23 @@ a {
   background: rgba(255, 255, 255, 0.06);
   color: var(--text);
   border-radius: 12px;
-  padding: 10px 12px;
+  padding: 14px 16px;
+  /* Larger tap target */
   font-weight: 600;
   cursor: pointer;
 }
+
 .btnPrimary {
   background: var(--accent);
   border-color: rgba(124, 92, 255, 0.55);
+  color: white;
 }
+
 .btnGhost {
   background: transparent;
+  border-color: transparent;
 }
+
 .btnDanger {
   background: rgba(255, 92, 122, 0.14);
   border-color: rgba(255, 92, 122, 0.35);
@@ -154,14 +167,18 @@ a {
   background: #ffffff;
   border: 1px solid var(--border);
   color: var(--text);
-  padding: 12px 14px;
+  padding: 14px 16px;
+  /* Larger tap targets */
   border-radius: 12px;
   outline: none;
-  box-shadow: 0 1px 2px rgba(0,0,0,0.02);
+  box-shadow: 0 1px 2px rgba(0, 0, 0, 0.02);
   transition: border-color 0.2s;
+  font-size: 16px;
+  /* Prevent iOS zoom */
 }
+
 .input:focus {
-  border-color: var(--blue);
+  border-color: var(--accent);
 }
 
 .list {
@@ -175,42 +192,30 @@ a {
   justify-content: space-between;
   gap: 10px;
   align-items: center;
-  padding: 14px;
+  padding: 16px;
+  /* Larger tap targets */
   border-radius: 14px;
   border: 1px solid var(--border);
   background: rgba(0, 0, 0, 0.01);
   cursor: pointer;
   transition: all 0.2s ease;
+  min-height: 60px;
+  /* Force tap target minimum */
 }
+
 .listItem:hover {
   background: rgba(0, 0, 0, 0.03);
   transform: translateY(-1px);
 }
 
 .listItemTitle {
-  font-weight: 500;
+  font-weight: 600;
+  font-size: 15px;
 }
 
 .fab {
-  position: fixed;
-  right: 18px;
-  bottom: 18px;
-  width: 56px;
-  height: 56px;
-  border-radius: 999px;
-  border: none;
-  background: linear-gradient(135deg, #a855f7, #3b82f6);
-  color: white;
-  font-size: 26px;
-  display: grid;
-  place-items: center;
-  box-shadow: 0 4px 12px rgba(168, 85, 247, 0.3);
-  cursor: pointer;
-  transition: transform 0.2s ease, box-shadow 0.2s ease;
-}
-.fab:hover {
-  transform: scale(1.05) translateY(-2px);
-  box-shadow: 0 8px 16px rgba(168, 85, 247, 0.4);
+  display: none;
+  /* Replaced by bottom nav center button */
 }
 
 .sectionTitle {
@@ -220,10 +225,137 @@ a {
   gap: 10px;
   margin: 12px 0 8px;
 }
+
 .sectionTitle h2 {
   margin: 0;
   font-size: 16px;
+  color: var(--text);
 }
+
 .sectionTitle .muted {
   font-size: 12px;
+}
+
+/* Bottom Navigation */
+.bottomNav {
+  position: fixed;
+  bottom: 0;
+  left: 0;
+  right: 0;
+  height: 80px;
+  background: rgba(255, 255, 255, 0.95);
+  backdrop-filter: blur(10px);
+  border-top: 1px solid var(--border);
+  display: flex;
+  justify-content: space-around;
+  align-items: center;
+  padding: 0 10px;
+  padding-bottom: env(safe-area-inset-bottom);
+  z-index: 100;
+}
+
+.navBtn {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  justify-content: center;
+  gap: 4px;
+  background: none;
+  border: none;
+  color: var(--muted);
+  font-size: 10px;
+  font-weight: 600;
+  cursor: pointer;
+  width: 60px;
+  height: 60px;
+}
+
+.navBtn.active {
+  color: var(--accent);
+}
+
+.navBtn .icon {
+  font-size: 22px;
+  margin-bottom: 2px;
+}
+
+.navCenterWrapper {
+  position: relative;
+  width: 60px;
+  height: 60px;
+  display: flex;
+  justify-content: center;
+}
+
+.navCenterFab {
+  position: absolute;
+  bottom: 16px;
+  width: 56px;
+  height: 56px;
+  border-radius: 28px;
+  background: var(--text);
+  color: white;
+  border: none;
+  box-shadow: 0 6px 16px rgba(0, 0, 0, 0.2);
+  display: flex;
+  justify-content: center;
+  align-items: center;
+  cursor: pointer;
+  transition: transform 0.2s;
+  z-index: 101;
+}
+
+.navCenterFab:active {
+  transform: scale(0.95);
+}
+
+.navCenterFab .plus {
+  font-size: 32px;
+  font-weight: 300;
+  line-height: 1;
+  margin-top: -2px;
+}
+
+/* Empty states */
+.emptyState {
+  padding: 40px 20px;
+  text-align: center;
+  background: var(--panel);
+  border-radius: 16px;
+  border: 1px dashed var(--border);
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  gap: 16px;
+}
+
+.horizontalScrollList {
+  display: flex;
+  overflow-x: auto;
+  gap: 12px;
+  scroll-snap-type: x mandatory;
+  padding-bottom: 12px;
+}
+
+.horizontalScrollList::-webkit-scrollbar {
+  display: none;
+}
+
+.quickAccessItem {
+  min-width: 90px;
+  background: var(--panel);
+  border: 1px solid var(--border);
+  padding: 12px;
+  border-radius: 12px;
+  scroll-snap-align: start;
+  text-align: center;
+  display: flex;
+  flex-direction: column;
+  gap: 6px;
+  align-items: center;
+  cursor: pointer;
+}
+
+.quickAccessItem:active {
+  background: rgba(0, 0, 0, 0.02);
 }

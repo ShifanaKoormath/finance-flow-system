@@ -30,10 +30,14 @@ function bumpUsage(entityId) {
 export function AddTransactionPage() {
   const nav = useNavigate();
   const loc = useLocation();
-  const preselectedEntityId = new URLSearchParams(loc.search).get("entityId");
+  const searchParams = new URLSearchParams(loc.search);
+  const preselectedEntityId = searchParams.get("entityId");
+  const preselectedType = searchParams.get("type");
 
-  const [step, setStep] = useState(1);
-  const [kind, setKind] = useState(null); // "gave" | "received"
+  const initialKind = preselectedType === "income" ? "received" : (preselectedType === "expense" ? "gave" : null);
+
+  const [step, setStep] = useState(preselectedEntityId && initialKind ? 3 : 1);
+  const [kind, setKind] = useState(initialKind); // "gave" | "received"
   const [entities, setEntities] = useState([]);
   const [transactions, setTransactions] = useState([]);
   const [selectedEntityId, setSelectedEntityId] = useState(preselectedEntityId || "");
@@ -61,16 +65,16 @@ export function AddTransactionPage() {
       if (tx) {
         const isIncome = tx.type === "income";
         const youId = you ? String(you._id) : "";
-        
+
         let otherEntityId = "";
         let k = "";
-        
+
         if (isIncome) {
-           k = "received";
-           otherEntityId = String(tx.from?._id || tx.from);
+          k = "received";
+          otherEntityId = String(tx.from?._id || tx.from);
         } else {
-           k = "gave";
-           otherEntityId = String(tx.to?._id || tx.to);
+          k = "gave";
+          otherEntityId = String(tx.to?._id || tx.to);
         }
 
         setKind(k);
@@ -79,12 +83,12 @@ export function AddTransactionPage() {
         if (tx.date) setDate(new Date(tx.date).toISOString().substring(0, 10));
         setTitle(tx.title || "");
         setNote(tx.note || "");
-        
+
         if (tx.sourceTransactionId) setLinking({ mode: "sourceTx", id: String(tx.sourceTransactionId) });
         else if (tx.sourceEntityId) setLinking({ mode: "sourceEntity", id: String(tx.sourceEntityId) });
-        
+
         if (tx.cycleId) setSelectedCycleId(String(tx.cycleId));
-        
+
         setStep(3); // Jump to amount input manually
       }
       setEditingLoaded(true);
@@ -170,8 +174,8 @@ export function AddTransactionPage() {
     let alive = true;
     if (activeSourceIdForCycle) {
       api.listCycles(activeSourceIdForCycle).then(res => {
-         if(alive) setCycles(res);
-      }).catch(()=>{});
+        if (alive) setCycles(res);
+      }).catch(() => { });
     } else {
       setCycles([]);
       setSelectedCycleId("");
@@ -402,12 +406,12 @@ export function AddTransactionPage() {
           <input className="input" placeholder="Note (optional)" value={note} onChange={(e) => setNote(e.target.value)} />
 
           <div style={{ height: 14 }} />
-          
+
           {/* Source linking UI totally separated */}
           <div className="sectionTitle" style={{ marginTop: 24 }}>
             <h2>Link to Source (Optional)</h2>
           </div>
-          
+
           <div className="card cardPad" style={{ background: "rgba(255,255,255,0.02)", border: "1px solid var(--border)", marginBottom: 12 }}>
             <div className="muted" style={{ fontSize: 13, marginBottom: 8, fontWeight: 700 }}>Link Specific Transaction</div>
             <div className="muted" style={{ fontSize: 12, marginBottom: 10 }}>Links this expense to a specific receipt from a source.</div>
@@ -417,25 +421,25 @@ export function AddTransactionPage() {
                   const d = new Date(t.date || t.createdAt);
                   const displayDate = d.toLocaleDateString("en-US", { month: "short", day: "numeric" });
                   return (
-                  <button
-                    key={t._id}
-                    className="listItem"
-                    onClick={() => setLinking({ mode: "sourceTx", id: String(t._id) })}
-                    style={{
-                      cursor: "pointer",
-                      textAlign: "left",
-                      borderColor: linking.mode === "sourceTx" && linking.id === String(t._id) ? "rgba(124, 92, 255, 0.65)" : undefined,
-                      background: linking.mode === "sourceTx" && linking.id === String(t._id) ? "rgba(124, 92, 255, 0.1)" : undefined,
-                    }}
-                  >
-                    <div>
-                      <div className="listItemTitle">{formatINR(t.amount)}</div>
-                      <div className="muted" style={{ fontSize: 12 }}>
-                        {displayDate} • {t.title || (t.from?.name ? `From ${t.from.name}` : "Source receipt")}
+                    <button
+                      key={t._id}
+                      className="listItem"
+                      onClick={() => setLinking({ mode: "sourceTx", id: String(t._id) })}
+                      style={{
+                        cursor: "pointer",
+                        textAlign: "left",
+                        borderColor: linking.mode === "sourceTx" && linking.id === String(t._id) ? "rgba(124, 92, 255, 0.65)" : undefined,
+                        background: linking.mode === "sourceTx" && linking.id === String(t._id) ? "rgba(124, 92, 255, 0.1)" : undefined,
+                      }}
+                    >
+                      <div>
+                        <div className="listItemTitle">{formatINR(t.amount)}</div>
+                        <div className="muted" style={{ fontSize: 12 }}>
+                          {displayDate} • {t.title || (t.from?.name ? `From ${t.from.name}` : "Source receipt")}
+                        </div>
                       </div>
-                    </div>
-                    <span className="muted">link</span>
-                  </button>
+                      <span className="muted">link</span>
+                    </button>
                   );
                 })}
               </div>
@@ -465,7 +469,7 @@ export function AddTransactionPage() {
                 ))}
               </div>
             ) : <div className="muted" style={{ fontSize: 12 }}>No sources available.</div>}
-            
+
             {linking.mode === "sourceEntity" && activeSourceIdForCycle && (
               <div style={{ marginTop: 12, padding: 8, background: "rgba(0,0,0,0.02)", borderRadius: 6 }}>
                 <div className="muted" style={{ fontSize: 12, marginBottom: 4, color: "var(--primary)" }}>Select Month (Required)</div>
@@ -481,7 +485,7 @@ export function AddTransactionPage() {
 
           {linking.mode !== "none" && (
             <div style={{ marginTop: 12, textAlign: "right" }}>
-               <button className="btn btnGhost" onClick={() => setLinking({ mode: "none", id: "" })}>Clear Selection</button>
+              <button className="btn btnGhost" onClick={() => setLinking({ mode: "none", id: "" })}>Clear Selection</button>
             </div>
           )}
 
